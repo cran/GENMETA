@@ -108,16 +108,37 @@ myoptim <- function(no_of_studies, study_optim, ref_dat_optim, X_rbind, X_bdiag_
       # }
         
       #print(class(J_n))
-      #print(J_n)
+      #print(cond(J_n))
       #print(is.nan(J_n_beta))
       #print(det(J_n))
-      if(det(J_n) == 0)
-      { 
-        beta_old <- rep(NA, ncol(ref_dat))
+      if(pracma::cond(J_n) > 1000)
+      {
+        perturb_seq = seq(0, mean(diag(J_n)), 0.01)
+        well_condition_status = TRUE 
+        perturb_seq_index = 1
+        while(well_condition_status)
+        {
+          J_n = J_n + perturb_seq[perturb_seq_index]* diag(diag(J_n))
+          if(pracma::cond(J_n) <= 1000)
+            well_condition_status = FALSE
+          perturb_seq_index = perturb_seq_index + 1
+        }
+      }
+      
+      #---- lines 129 to 134 updated by adding 0.01*mean of diagonal of J_n to J_n
+      #if (abs(det(J_n))>1e-20){
+        #print("original")
+       # J_n_inv <- solve(J_n, tol = 1e-60)
+      #}else{
+       #   J_n_inv <- solve(J_n+(mean(diag(J_n))*0.01)*diag(1,dim(J_n)[1]), tol = 1e-60)
+      #}
+      #if(det(J_n) == 0)
+      #{
+        #beta_old <- rep(NA, ncol(ref_dat))
         #print(det(J_n))
         #print("The Jacobian is singular")
-        break;
-      }
+        #break;
+      #}
       beta_new <- beta_old - (solve(J_n, tol=1e-60) %*% Dn)
       #print(D_n_beta_t)
       #print(beta_old)
@@ -213,8 +234,29 @@ myoptim <- function(no_of_studies, study_optim, ref_dat_optim, X_rbind, X_bdiag_
       Delta_hat <- (U %*% t(U))/(nrow(ref_dat))
 
       # Defining optimal C here...
-      C_beta <- solve(Lambda_ref + Delta_hat, tol = 1e-60)
-
+      inv_C <- Lambda_ref + Delta_hat
+      if(pracma::cond(inv_C) > 1000)
+      {
+        perturb_seq_C = seq(0, mean(diag(inv_C)), 0.01)
+        well_condition_status_C = TRUE 
+        perturb_seq_index_C = 1
+        while(well_condition_status_C)
+        {
+          inv_C = inv_C + perturb_seq_C[perturb_seq_index_C]* diag(diag(inv_C))
+          if(pracma::cond(inv_C) <= 1000)
+            well_condition_status_C = FALSE
+          perturb_seq_index_C = perturb_seq_index_C + 1
+        }
+      }
+      ##if (abs(det(inv_C))>1e-20){
+        #print("original")
+        ##C_beta <- solve(inv_C, tol = 1e-60)
+      ##}else{
+        ##C_beta <- solve(inv_C+(mean(diag(inv_C))*0.01)*diag(1,dim(inv_C)[1]), tol = 1e-60)
+      ##}
+      
+      C_beta <- solve(inv_C, tol = 1e-60)
+      
       # Defining Gamma_hat here...
       Gamma_hat <- Gamma_hat/nrow(ref_dat)
 
@@ -356,11 +398,31 @@ myoptim <- function(no_of_studies, study_optim, ref_dat_optim, X_rbind, X_bdiag_
       #print(J_n)
       #print(is.nan(J_n_beta))
       #print(det(J_n))
-      if(det(J_n) == 0)
-      { beta_old <- rep(NA, (ncol(ref_dat) - 1 + no_of_studies))
-      break;
+      if(pracma::cond(J_n) > 1000)
+      {
+        perturb_seq = seq(0, mean(diag(J_n)), 0.01)
+        well_condition_status = TRUE 
+        perturb_seq_index = 1
+        while(well_condition_status)
+        {
+          J_n = J_n + perturb_seq[perturb_seq_index]* diag(diag(J_n))
+          if(pracma::cond(J_n) <= 1000)
+            well_condition_status = FALSE
+          perturb_seq_index = perturb_seq_index + 1
+        }
       }
-      beta_new <- beta_old - (solve(J_n, tol = 1e-60) %*% Dn)
+      #--lines 401 to 406 upadted before based on adding 0.01 to mean diagonal
+      #if (abs(det(J_n))>1e-20){
+        #print("original")
+       # J_n_inv <- solve(J_n, tol = 1e-60)
+      #}else{
+      #    J_n_inv <- solve(J_n+(mean(diag(J_n))*0.01)*diag(1,dim(J_n)[1]), tol = 1e-60)
+      #}
+      #if(det(J_n) == 0)
+      #{ beta_old <- rep(NA, (ncol(ref_dat) - 1 + no_of_studies))
+      #break;
+      #}
+      beta_new <- beta_old - (solve(J_n, tol=1e-60) %*% Dn)
       #print(D_n_beta_t)
       #print(beta_old)
       #print(beta_new)
@@ -466,13 +528,37 @@ myoptim <- function(no_of_studies, study_optim, ref_dat_optim, X_rbind, X_bdiag_
       }
 
       Delta_hat <- (U %*% t(U))/(nrow(ref_dat))
+      inv_C <- Lambda_ref + Delta_hat
+      
+      if(pracma::cond(inv_C) > 1000)
+      {
+        perturb_seq_C = seq(0, mean(diag(inv_C)), 0.01)
+        well_condition_status_C = TRUE 
+        perturb_seq_index_C = 1
+        while(well_condition_status_C)
+        {
+          inv_C = inv_C + perturb_seq_C[perturb_seq_index_C]* diag(diag(inv_C))
+          if(pracma::cond(inv_C) <= 1000)
+            well_condition_status_C = FALSE
+          perturb_seq_index_C = perturb_seq_index_C + 1
+        }
+      }
+      ##if (abs(det(inv_C))>1e-20){
+      #print("original")
+      ##C_beta <- solve(inv_C, tol = 1e-60)
+      ##}else{
+      ##C_beta <- solve(inv_C+(mean(diag(inv_C))*0.01)*diag(1,dim(inv_C)[1]), tol = 1e-60)
+      ##}
+      
+      C_beta <- solve(inv_C, tol = 1e-60)
+      
 
-      C_beta <- solve(Lambda_ref + Delta_hat, tol = 1e-60)
+      #C_beta <- solve(Lambda_ref + Delta_hat, tol = 1e-60)
       #C_beta <- solve(round(Delta_hat + Lambda_ref,2), tol = 1e-30)
       Gamma_hat <- Gamma_hat/nrow(ref_dat)
 
       info <- (t(Gamma_hat) %*% C_beta %*% Gamma_hat)
-
+      
       if(det(info) == 0)
       {
         asy_var_opt = NULL
@@ -484,7 +570,7 @@ myoptim <- function(no_of_studies, study_optim, ref_dat_optim, X_rbind, X_bdiag_
 
     }
 
-
+    #print(beta_old)
     if(sum(is.na(beta_old)) > 0)
     {
       asy_var_opt = NULL

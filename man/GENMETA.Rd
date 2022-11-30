@@ -4,8 +4,14 @@
 \alias{GENMETA}
 \title{Implementing Generalized Meta-analysis}
 \usage{
-GENMETA(study_info, ref_dat, model, variable_intercepts = FALSE,
-  initial_val = NULL, control = list(epsilon = 1e-06, maxit = 1000))
+GENMETA(
+  study_info,
+  ref_dat,
+  model,
+  variable_intercepts = FALSE,
+  initial_val = NULL,
+  control = list(epsilon = 1e-06, maxit = 1000)
+)
 }
 \arguments{
 \item{study_info}{a list of lists containing information about the studies; the main list contains a list for each study, which must have the fields:
@@ -21,7 +27,7 @@ GENMETA(study_info, ref_dat, model, variable_intercepts = FALSE,
 
 \item{variable_intercepts}{an optional logical (applicable only when the model is "logistic"); if TRUE, the intercepts of the true models for each of the studies are assumed to be different. Default is FALSE.}
 
-\item{initial_val}{an optional numeric vector containing initial values for the maximal model parameters which is needed for the IRWLS algorithm. Default is set to the one obtained from standard meta-analysis of the available estimates for each of the parameters across studies.}
+\item{initial_val}{an optional numeric vector containing initial values for the maximal model parameters which is needed for the IRWLS algorithm. Default is set to the one obtained from standard meta-analysis of the available estimates for each of the parameters across studies. If one of the studies contain information on all the covariates, then the user can use this study to obtain estimate of the initial vector. See details.}
 
 \item{control}{an optional list containing the epsilon (positive numeric) and maxiter (positive number) needed for convergence of the algorithm. Default epsilon and maximum iterations are 1e-06 and 1000, respectively. For creating a control argument for GENMETA, see \code{\link[GENMETA]{GENMETA.control}}.}
 }
@@ -50,6 +56,7 @@ It also allows estimation of the regression parameters, only from the sample siz
 
 When the model is "linear", it is assumed that the outcome is standardized to have unit variance.
 For more details on the IRWLS, see References.
+If one of the studies has information on all the covariates, then the user can use that study to provide their own estimate for the initial vector. Note that this option is currently available for linear model and logistic model with variable intercepts set to FALSE. In particular, the user can use the glm function from stats package in R to fit the maximal model on that study and extract the coefficients from the model fit.
 }
 \examples{
 # This example shows how to create the inputs GENMETA and then implement generalized meta-analysis

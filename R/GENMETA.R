@@ -11,7 +11,7 @@
 #' @param ref_dat a data matrix containing all the distinct covariates across studies from a reference set of individuals. This is used for estimating joint distribution of the covariates. The data matrix must have the vector of ones as its first column. The column names of the data matrix should match the names of the covariates from the studies.
 #' @param model a description of the type of regression model; this is a character string naming the regression model. The current version is for "logistic" and "linear".
 #' @param variable_intercepts an optional logical (applicable only when the model is "logistic"); if TRUE, the intercepts of the true models for each of the studies are assumed to be different. Default is FALSE.
-#' @param initial_val an optional numeric vector containing initial values for the maximal model parameters which is needed for the IRWLS algorithm. Default is set to the one obtained from standard meta-analysis of the available estimates for each of the parameters across studies.
+#' @param initial_val an optional numeric vector containing initial values for the maximal model parameters which is needed for the IRWLS algorithm. Default is set to the one obtained from standard meta-analysis of the available estimates for each of the parameters across studies. If one of the studies contain information on all the covariates, then the user can use this study to obtain estimate of the initial vector. See details.
 #' @param control an optional list containing the epsilon (positive numeric) and maxiter (positive number) needed for convergence of the algorithm. Default epsilon and maximum iterations are 1e-06 and 1000, respectively. For creating a control argument for GENMETA, see \code{\link[GENMETA]{GENMETA.control}}.
 #' @details Generalized Meta-analysis (GENMETA) is a tool that allows researchers to quickly build models for multivariate meta-analysis in the presence of disparate covariate information across studies. It is implemented based on mainly two input arguments:
 #' \itemize{
@@ -22,6 +22,7 @@
 #' \cr \cr \bold{Note}: GENMETA will not work if both the estimates of the covariance matrix and the sample size are NULL.
 #' @details When the model is "linear", it is assumed that the outcome is standardized to have unit variance.
 #' For more details on the IRWLS, see References.
+#' If one of the studies has information on all the covariates, then the user can use that study to provide their own estimate for the initial vector. Note that this option is currently available for linear model and logistic model with variable intercepts set to FALSE. In particular, the user can use the glm function from stats package in R to fit the maximal model on that study and extract the coefficients from the model fit.
 #' @return An object of class "GENMETA" is a list containing GENMETA estimate, its variance-covariance matrix and estimates the residual variance in the case of "linear" model .
 #' \item{Est.coeff}{a numeric vector containing the estimated regression coefficients of the maximal model using optimal weighting matrix.}
 #' \item{Est.var.cov}{a matrix containing estimate of variance-covariance matrix of the corresponding GENMETA estimator.}
@@ -29,7 +30,7 @@
 #' \item{iter}{a numeric containing the number of iterations used in the algorithm}
 #' \item{call}{the matched call}
 #' \cr The function \code{\link[GENMETA]{GENMETA.summary}} prints a summary of the results obtained from GENMETA.
-#' \cr The function \code{\link[GENMETA]{GENMETA.plot}} plots the estimate of the parameter from each of the studies, the summary measure(GENMETA estimate) and their confidence intervals. 
+#' \cr The function \code{\link[GENMETA]{GENMETA.plot}} plots the estimate of the parameter from each of the studies, the summary measure(GENMETA estimate) and their confidence intervals.
 #' @keywords Generalized Meta Analysis
 #' @references Tang, R., Kundu, P. and Chatterjee, N. (2017) Generalized Meta-Analysis for Multivariate Regression Models Across Studies with Disparate Covariate Information. \href{https://arxiv.org/abs/1708.03818}{arXiv:1708.03818v1 [stat.ME]}.
 #' @seealso \code{\link[GENMETA]{GENMETA.summary}}, \code{\link[GENMETA]{GENMETA.plot}}.
@@ -246,7 +247,13 @@
 #' @importFrom magic adiag
 #' @import MASS
 #' @import stats
-#' @import graphics
+#' @importFrom pracma cond
+#' @importFrom graphics abline
+#' @importFrom graphics axis
+#' @importFrom graphics mtext
+#' @importFrom graphics points
+#' @importFrom graphics segments
+#' @importFrom graphics title
 #' @importFrom Matrix rankMatrix
 #' @export
 #library(magic)
@@ -407,7 +414,7 @@ GENMETA <- function(study_info, ref_dat, model, variable_intercepts=FALSE, initi
     ## If the given inputs pass all the sanity checks...
     if(error_1 == 0 && error_2 == 0 && error_3 == 0 && error_4 == 0 && error_5 == 0)
     {
-      
+
       if(length(initial_val) == 0)
       {
         initial_val <- c()
@@ -415,7 +422,7 @@ GENMETA <- function(study_info, ref_dat, model, variable_intercepts=FALSE, initi
         if(different_intercept == TRUE)
         {
           initial_val <- c(initial_val, unlist(lapply(lapply(study_estimates, `[[`, 1), `[[`, 1)))
-          
+
           for(k in 1: length(names_wo_intercept))
           {
             for(j in estimates_in_which_studies_indices[[k]])
@@ -441,7 +448,7 @@ GENMETA <- function(study_info, ref_dat, model, variable_intercepts=FALSE, initi
           }
         }
         # End of Calculating initial value when the different_intercept is TRUE
-        
+
         # Calculating initial value when the different_intercept is FALSE
         if(different_intercept == F)
         {
@@ -486,10 +493,10 @@ GENMETA <- function(study_info, ref_dat, model, variable_intercepts=FALSE, initi
           initial_val[1] <- sum/weight_sum
         }
         # End of Calculating initial value when the different_intercept is FALSE
-        
+
         # End of initial_val calculation
       }
-      
+
 
 
         ## Creating X_rbind and X_bdiag matrices
@@ -556,7 +563,7 @@ GENMETA <- function(study_info, ref_dat, model, variable_intercepts=FALSE, initi
             {
                 col_ind <-  which(colnames(ref_dat) %in% names(study_estimates[[k]][[1]]) == TRUE)
                 temp_lambda_ref <- t(ref_dat[,col_ind]) %*% ref_dat[,col_ind]
-                lambda_ref[[k]] <- (temp_lambda_ref %*% study_estimates[[k]][[2]] %*% temp_lambda_ref)/nrow(ref_dat)
+                lambda_ref[[k]] <- (temp_lambda_ref %*% study_estimates[[k]][[2]] %*% temp_lambda_ref)/(nrow(ref_dat)*disp[k]^2)
             }
             A_n1 <- matrix(NA, nrow(C_init), ncol(ref_dat))
             B_n1 <- matrix(NA, nrow(C_init), 1)
@@ -625,10 +632,10 @@ GENMETA <- function(study_info, ref_dat, model, variable_intercepts=FALSE, initi
               colnames(asy_var_opt) <- colnames(ref_dat)
               rownames(asy_var_opt) <- colnames(ref_dat)
             }
-            
+
             beta_old <- as.vector(beta_old)
             names(beta_old) <- colnames(ref_dat)
-            
+
             linear_result <- list("Est.coeff" = beta_old, "Est.var.cov" = asy_var_opt, "Res.var" = disp_max_old, "iter" = no_of_iter, "call" = call_MetaG)
             class(linear_result) <- "GENMETA"
             return(linear_result)
@@ -651,14 +658,14 @@ GENMETA <- function(study_info, ref_dat, model, variable_intercepts=FALSE, initi
                 C_iter <- output_identity$C_optim
                 proceed <- TRUE
                 mark_failure = 0
-                
+
                 if(sum(is.na(beta_identity)) > 0 || output_identity$Status == 0)
                 {
                   #print("Jacobian is computationally singular or the algo didn't converge")
                   beta_initial = rep(NA, ncol(ref_dat))
                   asy_var_beta_converged = NULL
                 }else{
-                  
+
                   while(proceed)
                   {
                     no_of_iter_outer <- no_of_iter_outer + 1
@@ -677,7 +684,7 @@ GENMETA <- function(study_info, ref_dat, model, variable_intercepts=FALSE, initi
                     if(eps_outer < threshold)
                       proceed <- FALSE
                   }
-                  
+
                   total_iter <- total_iter + total_iter_identity
                   if(mark_failure == 1)
                   {
@@ -698,7 +705,7 @@ GENMETA <- function(study_info, ref_dat, model, variable_intercepts=FALSE, initi
                       beta_initial <- as.vector(beta_initial)
                       names(beta_initial) <- temp_name
                       #print(beta_initial)
-                      
+
                       if(is.null(asy_var_beta_converged_identity) == FALSE)
                       {
                         colnames(asy_var_beta_converged_identity) <- temp_name
@@ -709,9 +716,9 @@ GENMETA <- function(study_info, ref_dat, model, variable_intercepts=FALSE, initi
                         colnames(asy_var_beta_converged) <- temp_name
                         rownames(asy_var_beta_converged) <- temp_name
                       }
-                      
+
                     }
-                    
+
                     if(different_intercept == F)
                     {
                       beta_identity <- as.vector(beta_identity)
@@ -728,19 +735,19 @@ GENMETA <- function(study_info, ref_dat, model, variable_intercepts=FALSE, initi
                         colnames(asy_var_beta_converged) <- colnames(ref_dat)
                         rownames(asy_var_beta_converged) <- colnames(ref_dat)
                       }
-                      
-                    }
-                    
-                  }
-                  
-                  
-                }
-                
-                
-               
-               
 
-                
+                    }
+
+                  }
+
+
+                }
+
+
+
+
+
+
 
                 logistic_result <- list("Est.coeff" = beta_initial, "Est.var.cov" = asy_var_beta_converged, "Res.var" = NA, "iter" = total_iter, "call" = call_MetaG)
                 class(logistic_result) <- "GENMETA"
